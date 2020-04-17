@@ -11,11 +11,17 @@ class CSVFormat:
 
     DEFAULT_DELIMITER = ','
 
+    # pythonlibrary.net: 
+	# 这些方法必须设置为classmethod, 因为我们动态的将format类注册上去
+	# 而即使想JSONFormat这种通过实例注册的，也可以使用classmethod
     @classmethod
     def export_stream_set(cls, dataset, **kwargs):
         """Returns CSV representation of Dataset as file-like."""
         stream = StringIO()
 
+        # pythonlibrary.net: 
+		# 使用setdefault，增加一组key value到字典中，如果在字典中key已经存在
+		# 则什么都不做，如果key不存在，则创建新的
         kwargs.setdefault('delimiter', cls.DEFAULT_DELIMITER)
 
         _csv = csv.writer(stream, **kwargs)

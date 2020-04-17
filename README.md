@@ -1,3 +1,15 @@
+# About This Fork
+
+This fork contains many comments that explains how the code works, the purpose of this is to help others to read the source code of
+this great open source project.
+
+** NOTE: 所有在阅读时添加的标注都已 pythonlibrary.net 开头，根目录的main.py是用于运行代码设置断点辅助理解 **
+
+A blog post is also published for explaining how to read the code, here is the link:
+
+[带你读源码 – Tablib源码阅读](https://pythonlibrary.net/2020/04/17/reading-open-source-code-tablib/)
+
+
 # Tablib: format-agnostic tabular dataset library
 
 [![Jazzband](https://jazzband.co/static/img/badge.svg)](https://jazzband.co/)
@@ -14,6 +26,7 @@
     _  __/_  __ `/__  __ \__  / __  / __  __ \
     / /_  / /_/ / _  /_/ /_  /  _  /  _  /_/ /
     \__/  \__,_/  /_.___/ /_/   /_/   /_.___/
+
 
 
 Tablib is a format-agnostic tabular dataset library, written in Python.

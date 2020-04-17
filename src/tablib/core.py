@@ -39,24 +39,34 @@ class Row:
         self.tags = list(tags)
 
     def __iter__(self):
+        # pythonlibrary.net: __iter__ 方法是用来支持 "for x in row"这样的语法的
         return (col for col in self._row)
 
     def __len__(self):
+        # pythonlibrary.net: __len__ 方法是用来支持"len(row)"这样的语法的
         return len(self._row)
 
     def __repr__(self):
+        # pythonlibrary.net: __repr__ 方法用来支持调试器
+        # 1. 如果使用调试器观察row对象的话，可以同时显示这里的信息
+        # 2. 如果一个类没没有定义__str__方法，那么__repr__会被用来替代__str__方法，而__str__方法的作用是
+        #    当使用print(row)来打印row对象的时候，会打印出__str__方法的返回内容
         return repr(self._row)
 
     def __getitem__(self, i):
+        # pythonlibrary.net: __getitem__ 方法用来支持通过[]操作符来获取对象中的元素，例如"var = row[1]"
         return self._row[i]
 
     def __setitem__(self, i, value):
+        # pythonlibrary.net: __setitem__ 方法用来支持通过[]操作符来修改对象中的元素，例如"row[1] = 1234"
         self._row[i] = value
 
     def __delitem__(self, i):
+        # pythonlibrary.net: __delitem__ 方法用来支持通过del来删除[]操作符选中的元素, 例如 "del row[1]"
         del self._row[i]
 
     def __getstate__(self):
+        # pythonlibrary.net:  __getstate__ 和 __setstate__ 方法用来支持 pickle 库
 
         slots = dict()
 
@@ -67,6 +77,7 @@ class Row:
         return slots
 
     def __setstate__(self, state):
+        # pythonlibrary.net:  __getstate__ 和 __setstate__ 方法用来支持 pickle 库
         for (k, v) in list(state.items()):
             setattr(self, k, v)
 
@@ -83,6 +94,7 @@ class Row:
         self._row.insert(index, value)
 
     def __contains__(self, item):
+        # pythonlibrary.net: __contains__ 方法支持 "if item in row" 的语法
         return (item in self._row)
 
     @property
@@ -168,27 +180,45 @@ class Dataset:
         self.title = kwargs.get('title')
 
     def __len__(self):
+        # pythonlibrary.net: self.height 是下边定义的一个property
         return self.height
 
     def __getitem__(self, key):
         if isinstance(key, str):
+            # pythonlibrary.net:
+            # 如果key是一个字符串，则检查key是不是在self.headers中出现，如果出现了，就返回那一列的内容
             if key in self.headers:
                 pos = self.headers.index(key)  # get 'key' index from each data
                 return [row[pos] for row in self._data]
             else:
                 raise KeyError
         else:
+            # pythonlibrary.net:
+            # 如果key不是一个字符串，则它有可能是一个数字或者是一个切片操作
             _results = self._data[key]
             if isinstance(_results, Row):
+                # pythonlibrary.net: 
+                # 如果使用key获得的是一个Row对象，那说明key是一个数字，我们获得了某一行，然后利用tuple获得
+                # 该行数据的tuple表示
                 return _results.tuple
             else:
+                # pythonlibrary.net: 
+                # 如果key是类似于[0:2]这样的切片操作，我们将获得多行对象，最终返回一个list，每一个元素是一个
+                # 该行数据的tuple表示
                 return [result.tuple for result in _results]
 
     def __setitem__(self, key, value):
+        # pythonlibrary.net: 
+        # 这个方法用来支持使用[]操作符设置元素，类似于dataset[1] = xxxx的操作，可以用来修改某一行的值
+        # 因此我们要先检查输入值得有效性
+        # 它跟__getitem__方法不同，__getitem__方法支持通过标题来获取列数据，而__setitem__方法仅支持修改行
         self._validate(value)
+        # pythonlibrary.net: 如果输入的值有效，则修改指定行的内容 
         self._data[key] = Row(value)
 
     def __delitem__(self, key):
+        # pythonlibrary.net: 
+        # 跟__getitem__方法类似, 我们可以通过[]操作符来删除某一行或者某一列
         if isinstance(key, str):
 
             if key in self.headers:
@@ -197,7 +227,8 @@ class Dataset:
                 del self.headers[pos]
 
                 for i, row in enumerate(self._data):
-
+                    # pythonlibrary.net: 
+                    # 因为Dataset中的数据是按行保存的，当我们要删除某一列的时候，需要循环删除每一行中的对应列
                     del row[pos]
                     self._data[i] = row
             else:
@@ -206,12 +237,17 @@ class Dataset:
             del self._data[key]
 
     def __repr__(self):
+        # pythonlibrary.net: 
+        # 这个我们在Row类中解释过了
         try:
             return '<%s dataset>' % (self.title.lower())
         except AttributeError:
             return '<dataset object>'
 
     def __str__(self):
+        # pythonlibrary.net: 
+        # __str__ 方法用来支持 'print(dataset)'，所以这里代码较多，因为在用户打印一个dataset的时候
+        # tablib将按表格的形式将数据输出到终端
         result = []
 
         # Add str representation of headers.
@@ -219,17 +255,27 @@ class Dataset:
             result.append([str(h) for h in self.__headers])
 
         # Add str representation of rows.
+        # pythonlibrary.net: 
+        # map函数将会把row里边的每一个元素作为参数传递给str()函数，最终每一行会变成一个字符串list被添加到result列表中
         result.extend(list(map(str, row)) for row in self._data)
 
-        lens = [list(map(len, row)) for row in result]
-        field_lens = list(map(max, zip(*lens)))
+        # pythonlibrary.net
+        # 下边lens和fields_lens是用来调整输出格式，保证输出列的宽度足够放所有的列元素，美化输出
+        lens = [list(map(len, row)) for row in result] # pythonlibrary.net: 获得每一行中每一个元素的长度
+        field_lens = list(map(max, zip(*lens))) # pythonlibrary.net: 获得每一列中元素的最大宽度
 
         # delimiter between header and data
         if self.__headers:
             result.insert(1, ['-' * length for length in field_lens])
 
-        format_string = '|'.join('{%s:%s}' % item for item in enumerate(field_lens))
+        # pythonlibrary.net: 
+        # 使用每一个列的最大宽度，创建了一个格式化字符串，该字符串的内容类似于 {0:7}|{1:5} 
+        # 这是python格式化字符串的一种语法，它的含义是第一例的宽度为7，第二列的宽度为5
+        format_string = '|'.join('{%s:%s}' % item for item in enumerate(field_lens)) 
 
+        # pythonlibrary.net: 
+        # 使用上边生成的格式字符串来格式化每一行，然后放在一个list里边，最后通过 \n 把他们连接起来，从而实现了
+        # 换行的目的
         return '\n'.join(format_string.format(*row) for row in result)
 
     # ---------
@@ -237,27 +283,45 @@ class Dataset:
     # ---------
 
     def _get_in_format(self, fmt_key, **kwargs):
+        # pythonlibrary.net: 
+        # 调用了format类的export_set方法，其具体实现要看不同的format类
         return registry.get_format(fmt_key).export_set(self, **kwargs)
 
     def _set_in_format(self, fmt_key, in_stream, **kwargs):
+        # pythonlibrary.net: 
+        # 调用了format类的import_set方法，其具体实现要看不同的format类
         in_stream = normalize_input(in_stream)
         return registry.get_format(fmt_key).import_set(self, in_stream, **kwargs)
 
     def _validate(self, row=None, col=None, safety=False):
         """Assures size of every row in dataset is of proper proportions."""
+        # pythonlibrary.net: 
+        # 检查传入的数据格式是否正确
         if row:
+            # pythonlibrary.net: 
+            # 如果dataset的width属性是有值的，也就是说如果dataset中有header或者有数据
+            # 则确认给定的行中的数据个数是不是跟dataset宽度（也就是每一行的元素个数）一致
+            # 如果dataset的width属性没值，那么说明dataset中没数据，因此无论给定的数据中
+            # 有多少个数据都可以作为第一行
             is_valid = (len(row) == self.width) if self.width else True
         elif col:
+            # pythonlibrary.net:
+            # 给定的列的数据个数跟dataset的行数一致，则认为数据有效
+            # 若dataset中没有数据，则认为给定的列为第一列
             if len(col) < 1:
                 is_valid = True
             else:
                 is_valid = (len(col) == self.height) if self.height else True
         else:
+            # pythonlibrary.net: 
+            # all函数用来检查list中的所有元素是否为True
             is_valid = all(len(x) == self.width for x in self._data)
 
         if is_valid:
             return True
         else:
+            # pythonlibrary.net: 
+            # 如果safety参数设置为True，则及时格式不正确也不会抛出异常
             if not safety:
                 raise InvalidDimensions
             return False
@@ -280,18 +344,28 @@ class Dataset:
                     try:
                         if col is None:
                             for j, c in enumerate(row):
+                                # pythonlibrary.net: 
+                                # 如果没有提供列名，则针对该每一行的所有元素进行格式化
+                                # callback就是格式化回调函数
                                 _data[row_i][j] = callback(c)
                         else:
+                                # pythonlibrary.net: 
+                                # 如果提供了列名，那么只用callback来格式化给定列的元素
                             _data[row_i][col] = callback(row[col])
                     except IndexError:
                         raise InvalidDatasetIndex
 
         if self.headers:
             if dicts:
+                # pythonlibrary.net: When dicts is enabled, that means we want to package data to dicts
+                #      create dicts using the header as key and row as value for each row, one row for one dict
+                #      data will be a list that holds all the dict that represents the row
                 data = [dict_pack(list(zip(self.headers, data_row))) for data_row in _data]
             else:
+                # pythonlibrary.net: When dicts is disabled, that means we want to package data to list
                 data = [list(self.headers)] + list(_data)
         else:
+            # There are no headers, we could only package the data to list
             data = [list(row) for row in _data]
 
         return data
@@ -306,6 +380,9 @@ class Dataset:
 
     def _set_headers(self, collection):
         """Validating headers setter."""
+        # pythonlibrary.net: 
+        # 因为在调用_validate方法的时候选择了non-saftey方式，因此如果格式不正确会抛出异常，所以
+        # 这里不需要判断该方法的返回值
         self._validate(collection)
         if collection:
             try:
@@ -315,6 +392,9 @@ class Dataset:
         else:
             self.__headers = None
 
+    # pythonlibrary.net: 
+    # 使用了property装饰器将_get_headers和_set_headers 设置成了getter和setter，在访问dataset
+    # 的headers属性会调用这两个方法
     headers = property(_get_headers, _set_headers)
 
     def _get_dict(self):
@@ -328,6 +408,8 @@ class Dataset:
             data.dict = [{'age': 90, 'first_name': 'Kenneth', 'last_name': 'Reitz'}]
 
         """
+        # pythonlibrary.net: 
+        # 调用_package方法将daset里边的数据转换给dict类型
         return self._package()
 
     def _set_dict(self, pickle):
@@ -367,11 +449,17 @@ class Dataset:
 
         col = list(col)
 
+        # pythonlibrary.net: 
+        # 获得定列的表头
         if self.headers:
             header = [col.pop(0)]
         else:
             header = []
 
+        # pythonlibrary.net: 
+        # 如果给定列是一个函数，则使用该函数处理每一行
+        # 注：这里主要是用来支持文章中提到的dynamic column功能
+        #     即，可以使用一个函数来生成列，这个函数有一个固定参数，参数为Row类型
         if len(col) == 1 and hasattr(col[0], '__call__'):
 
             col = list(map(col[0], self._data))
@@ -391,7 +479,9 @@ class Dataset:
         """The number of columns currently in the :class:`Dataset`.
            Cannot be directly modified.
         """
-
+        # pythonlibrary.net: 
+        # dataset的宽度，先尝试使用第一行的元素个数
+        # 如果失败了，则使用表头的元素个数，如果表头也不存在使用0
         try:
             return len(self._data[0])
         except IndexError:
@@ -410,6 +500,8 @@ class Dataset:
 
         stream = normalize_input(in_stream)
         if not format:
+            # pythonlibrary.net: 
+            # 如果没有提供格式，则尝试自动检测
             format = detect_format(stream)
 
         fmt = registry.get_format(format)
@@ -417,6 +509,7 @@ class Dataset:
             raise UnsupportedFormat('Format {} cannot be imported.'.format(format))
 
         if not import_set:
+            # support to pass in the custom import_set function
             raise UnsupportedFormat('Format {} cannot be imported.'.format(format))
 
         fmt.import_set(self, stream, **kwargs)
@@ -428,6 +521,7 @@ class Dataset:
 
         :param \\*\\*kwargs: (optional) custom configuration to the format `export_set`.
         """
+
         fmt = registry.get_format(format)
         if not hasattr(fmt, 'export_set'):
             raise UnsupportedFormat('Format {} cannot be exported.'.format(format))
@@ -538,29 +632,44 @@ class Dataset:
 
         # Callable Columns...
         if hasattr(col, '__call__'):
+            # pythonlibrary.net: 
+            # 动态列，动态列使用的函数仅支持Row作为参数
             col = list(map(col, self._data))
 
+        # pythonlibrary.net: 
+        # 传统列和动态列都经过_clean_col处理成传统数字格式的列
         col = self._clean_col(col)
         self._validate(col=col)
 
         if self.headers:
             # pop the first item off, add to headers
             if not header:
+                # pythonlibrary.net: 
+                # 如果dataset有表头，但是本函数没有提供表头则抛出异常
                 raise HeadersNeeded()
 
             # corner case - if header is set without data
             elif header and self.height == 0 and len(col):
+                # pythonlibrary.net: 
+                # 如果dataset有表头，但是没有数据，同时col提供了数据
+                # 则提供的数据太多抛出异常
                 raise InvalidDimensions
 
             self.headers.insert(index, header)
 
         if self.height and self.width:
+            # pythonlibrary.net: 
+            # dataset里边有数据
 
             for i, row in enumerate(self._data):
+                # pythonlibrary.net: 
+                # 向每一行中增加列元素
 
                 row.insert(index, col[i])
                 self._data[i] = row
         else:
+            # pythonlibrary.net: 
+            # 如果dataset里边没有数据，则用给定的元素创建每一行的Row对象
             self._data = [Row([row]) for row in col]
 
     def rpush_col(self, col, header=None):
@@ -587,6 +696,8 @@ class Dataset:
         """Adds a :ref:`separator <separators>` to the :class:`Dataset`."""
 
         # change offsets if headers are or aren't defined
+        # pythonlibrary.net: add sperator and specify the location of the sperator
+        #      if there is a header in the dataset, need to offset 1 
         if not self.headers:
             index = self.height if self.height else 0
         else:
@@ -627,6 +738,11 @@ class Dataset:
                 raise KeyError
 
         if not col > self.width:
+            # pythonlibrary.net: 
+            # 每一列都可以有不同的格式
+            # 注：这里的格式不同于在formats文件夹里的格式，这里指的是我们怎么来改变每一列的格式
+            #     比如我们想把某一列的字符串全部大写，也就是改变那一列的格式，而formats文件夹中的
+            #     格式指的是tablib支持什么样格式的文件
             self._formatters.append((col, handler))
         else:
             raise InvalidDatasetIndex
@@ -637,6 +753,8 @@ class Dataset:
         """Returns a new instance of the :class:`Dataset`, excluding any rows
         that do not contain the given :ref:`tags <tags>`.
         """
+        # pythonlibrary.net: 
+        # 使用tag来过滤dataset，因为我们要一个子dataset，所以需要先copy
         _dset = copy(self)
         _dset._data = [row for row in _dset._data if row.has_tag(tag)]
 
@@ -652,18 +770,29 @@ class Dataset:
         """
 
         if isinstance(col, str):
+            # the provided col is the header fo the 
 
             if not self.headers:
                 raise HeadersNeeded
+            # pythonlibrary.net: 
+            # 1. itemgetter函数：假设 f = itemgetter(2), 那么这样调用f(r)的话其实相当于r[2]
+            #                    假设 g = itemgetter(2, 5, 3), 那么这样调用g(r)的话其实相当于(r[2], r[5], r[3])
+            # 2. sorted函数支持提供一个函数来在排序前对数据进行预处理，举例来说
+            #      a = [1,45,2,1,5,3]
+            #      sorted(a) -> [1, 1, 2, 3, 5, 45]
+            #      sorted(a, key=lambda x:1/x) -> 45, 5, 3, 2, 1, 1]
+            # 因此itemgetter(col)将将使用列名来通过self.dict获取元素值，然后对其排序
 
             _sorted = sorted(self.dict, key=itemgetter(col), reverse=reverse)
             _dset = Dataset(headers=self.headers, title=self.title)
 
             for item in _sorted:
+                # as _sorted is a sorted dict from self.dict, so here we convert the dict back to dataset
                 row = [item[key] for key in self.headers]
                 _dset.append(row=row)
 
         else:
+            # the provided col is the column number
             if self.headers:
                 col = self.headers[col]
 
@@ -691,6 +820,9 @@ class Dataset:
         _dset = Dataset()
         # The first element of the headers stays in the headers,
         # it is our "hinge" on which we rotate the data
+
+        # pythonlibrary.net: 
+        # 使用第一列（包含表头）作为新的表头
         new_headers = [self.headers[0]] + self[self.headers[0]]
 
         _dset.headers = new_headers
@@ -738,10 +870,14 @@ class Dataset:
         if not isinstance(other, Dataset):
             return
 
+        # pythonlibrary.net:
+        # 两个dataset都需要有表头
         if self.headers or other.headers:
             if not self.headers or not other.headers:
                 raise HeadersNeeded
 
+        # pythonlibrary.net: 
+        # 两个dataset的高度一致
         if self.height != other.height:
             raise InvalidDimensions
 
@@ -766,6 +902,13 @@ class Dataset:
         """Removes all duplicate rows from the :class:`Dataset` object
         while maintaining the original order."""
         seen = set()
+        # pythonlibrary.net: 
+        # 对self._data进行迭代，取出每一行，如果tuple(row)在seen里边没出现，则把tuple(row)加到seen里边
+        # 并将row加到返回的list中，而如果tuple(row)在seen里边出现过则什么都不做
+        # 一个简单的例子：
+        #           a = [1,2,3,4]
+        #           b = list()
+        #           [v for v in a if v == 1 or b.append(v)] 将返回 [1],  b则为[2,3,4]
         self._data[:] = [row for row in self._data if not (tuple(row) in seen or seen.add(tuple(row)))]
 
     def wipe(self):
@@ -783,12 +926,17 @@ class Dataset:
             return
 
         if rows is None:
+            # pythonlibrary.net: 
+            # 如果没提供rows则选取所有的row
             rows = list(range(self.height))
 
         if cols is None:
+            # pythonlibrary.net:
+            # 如果没提供cols则选取所有的列
             cols = list(self.headers)
 
         # filter out impossible rows and columns
+        # check if the givn rows and cols actually exist
         rows = [row for row in rows if row in range(self.height)]
         cols = [header for header in cols if header in self.headers]
 
@@ -818,6 +966,8 @@ class Databook:
     """
 
     def __init__(self, sets=None):
+        # pythonlibrary.net: 
+        # 一个databook由多个dataset组成
         self._datasets = sets or []
 
     def __repr__(self):
@@ -842,6 +992,8 @@ class Databook:
 
     def _package(self, ordered=True):
         """Packages :class:`Databook` for delivery."""
+        # pythonlibrary.net: 
+        # 返回一个包含所有dataset的列表
         collector = []
 
         if ordered:
@@ -875,6 +1027,8 @@ class Databook:
 
         fmt = registry.get_format(format)
         if not hasattr(fmt, 'import_book'):
+            # pythonlibrary.net: 
+            # 格式处理器主要具有import_book
             raise UnsupportedFormat('Format {} cannot be loaded.'.format(format))
 
         fmt.import_book(self, stream, **kwargs)
@@ -888,6 +1042,8 @@ class Databook:
         """
         fmt = registry.get_format(format)
         if not hasattr(fmt, 'export_book'):
+            # pythonlibrary.net: 
+            # 格式处理器主要具有export_book 
             raise UnsupportedFormat('Format {} cannot be exported.'.format(format))
 
         return fmt.export_book(self, **kwargs)
@@ -898,6 +1054,8 @@ def detect_format(stream):
     stream = normalize_input(stream)
     fmt_title = None
     for fmt in registry.formats():
+        # pythonlibrary.net: 
+        # 使用所有的格式处理器来检测给定数据流的格式
         try:
             if fmt.detect(stream):
                 fmt_title = fmt.title
